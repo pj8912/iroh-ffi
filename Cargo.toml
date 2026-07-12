@@ -50,6 +50,8 @@ tracing-subscriber = { version = "0.3.17" }
 serde = { version = "1.0.196", features = ["derive"] }
 derive_more = { version = "2.0", features = ["debug"] }
 n0-future = "0.3"
+iroh-gossip = { git = "https://github.com/n0-computer/iroh-gossip.git" }
+
 
 
 [dev-dependencies]

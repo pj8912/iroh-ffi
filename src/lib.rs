@@ -3,6 +3,8 @@ mod accept;
 mod android_init;
 mod endpoint;
 mod error;
+mod gossip;
+
 mod key;
 mod net;
 mod path;
@@ -14,7 +16,7 @@ mod watch;
 use tracing_subscriber::filter::LevelFilter;
 
 pub use self::{
-    accept::*, endpoint::*, error::*, key::*, net::*, path::*, relay::*, services::*, ticket::*,
+    accept::*, endpoint::*, error::*, gossip::*, key::*, net::*, path::*, relay::*, services::*, ticket::*,
     watch::*,
 };
 
