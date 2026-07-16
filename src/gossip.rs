@@ -1,5 +1,5 @@
 use std::sync::Arc;
-
+use std::str::FromStr;
 use tokio::sync::Mutex;
 
 
@@ -18,6 +18,13 @@ use crate::net::EndpointAddr;
 use crate::IrohError;
 
 
+
+#[derive(uniffi::Record)]
+pub struct GossipMessage {
+    pub sender: String,
+    pub content: Vec<u8>,
+}
+
 #[derive(uniffi::Object)]
 pub struct GossipTopic {
     sender: GossipSender,
@@ -26,6 +33,8 @@ pub struct GossipTopic {
 
 #[uniffi::export]
 impl GossipTopic {
+    
+    #[uniffi::method(async_runtime = "tokio")]
     pub async fn broadcast(&self, message: Vec<u8>) -> Result<(), IrohError> {
         self.sender.broadcast(message.into())
             .await
@@ -33,11 +42,18 @@ impl GossipTopic {
         Ok(())
     }
 
-    pub async fn next_message(&self) -> Result<Option<Vec<u8>>, IrohError> {
+    
+    #[uniffi::method(async_runtime = "tokio")]
+    pub async fn next_message(&self) -> Result<Option<GossipMessage>, IrohError> {
         let mut rx = self.receiver.lock().await;
         while let Some(event_res) = rx.next().await {
             match event_res {
-                Ok(Event::Received(msg)) => return Ok(Some(msg.content.to_vec())),
+                Ok(Event::Received(msg)) => {
+                    return Ok(Some(GossipMessage {
+                        sender: msg.delivered_from.to_string(),
+                        content: msg.content.to_vec(),
+                    }))
+                },
                 Ok(_) => continue, 
                 Err(e) => return Err(anyhow::anyhow!(e).into()),
             }
@@ -45,13 +61,15 @@ impl GossipTopic {
         Ok(None)
     }
 
-    // Add this missing method!
+    
+    #[uniffi::method(async_runtime = "tokio")]
     pub async fn wait_to_join(&self) -> Result<(), IrohError> {
         let mut rx = self.receiver.lock().await;
         rx.joined().await.map_err(|e| anyhow::anyhow!(e))?;
         Ok(())
     }
 }
+
 
 #[derive(uniffi::Object)]
 pub struct GossipNode {
@@ -77,7 +95,7 @@ impl GossipNode {
         Ok(Self { inner: gossip, endpoint: raw_endpoint, router })
     }
 
-    
+    #[uniffi::method(async_runtime = "tokio")]
     pub async fn subscribe(&self, topic_bytes: Vec<u8>, bootstrap_peers: Vec<Arc<EndpointAddr>>) -> Result<Arc<GossipTopic>, IrohError> {
         if topic_bytes.len() != 32 {
             return Err(anyhow::anyhow!("Topic must be exactly 32 bytes").into());
