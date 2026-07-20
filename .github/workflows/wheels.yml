@@ -35,7 +35,7 @@ jobs:
             container: quay.io/pypa/manylinux_2_28_aarch64
             runner: [self-hosted, linux, ARM64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install rust + cargo-make
         run: |
           curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
@@ -52,17 +52,20 @@ jobs:
         with:
           name: wheels-${{ matrix.release-os }}-${{ matrix.release-arch }}
           path: target/wheels/*.whl
+          # Consumed by the `publish` job in the same run. 3 days leaves margin
+          # to re-run a failed publish without holding ~3GB for 90 days.
+          retention-days: 3
 
   osx:
     # arm64-only: the org has no GitHub-hosted macOS and x86_64 mac wheels
     # were dropped.
     runs-on: [self-hosted, macOS, ARM64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install -U maturin uniffi-bindgen
@@ -72,14 +75,15 @@ jobs:
         with:
           name: wheels-darwin-aarch64
           path: target/wheels/*.whl
+          retention-days: 3
 
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: davidB/rust-cargo-make@v1
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install -U maturin uniffi-bindgen
@@ -89,6 +93,7 @@ jobs:
         with:
           name: wheels-windows-x86_64
           path: target/wheels/*.whl
+          retention-days: 3
 
   publish:
     name: Publish wheels to PyPI
